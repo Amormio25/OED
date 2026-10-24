@@ -24,7 +24,6 @@
  * Created to fix internationalization bug where CSV upload messages always appeared in English.
  */
 
-
 // Server-side translations 
 const ServerTranslationData = {
 	// ============================================

@@ -218,7 +218,7 @@ async function uploadReadings(req, res, filepath, conn, lang = LANGUAGES.en) {
 		shouldRelaxedParsing,
 		shouldUseMeterZone,
 		shouldWarnOnCumulativeReset,
-		false,
+		false, // useMeterFrequency
 		0,
 		lang
 	); 

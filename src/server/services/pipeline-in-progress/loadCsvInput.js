@@ -57,6 +57,7 @@ async function loadCsvInput(
 	warnOnCumulativeReset = false,
 	useMeterFrequency = false,
 	useMeterFrequencyVariation = 0,
+	// OED uses English as the default language.
 	lang = LANGUAGES.en
 ) {
 	try {

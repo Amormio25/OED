@@ -54,6 +54,7 @@ export const submitMeters = async (uploadPreferences: MetersCSVUploadPreferences
 	dispatch: Dispatch, language: string): Promise<ApiResponse> => {
 	const backend = new ApiBackend();
 	const formData = new FormData();
+	// The Boolean values in state must be converted to the submitted values of yes and no.
 	const uploadPreferencesForm: CSVUploadPreferences = {
 		...uploadPreferences,
 		gzip: uploadPreferences.gzip,
@@ -68,7 +69,9 @@ export const submitMeters = async (uploadPreferences: MetersCSVUploadPreferences
 
 	try {
 		const response = await backend.doPostRequest<string>('/api/csv/meters', formData, {}, { 'Accept-Language': language });
+		// Meter Data was sent to the DB, invalidate meters for now
 		dispatch(baseApi.util.invalidateTags(['MeterData']));
+		// meters were invalidated so all meter changes will now reflect in Redux state, now return
 		return { success: true, message: response };
 	} catch (error) {
 		return { success: false, message: error.response.data };
