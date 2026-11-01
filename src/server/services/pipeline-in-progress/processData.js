@@ -62,6 +62,7 @@ const E0 = moment(0).utc()
  * 	The default if false.
  * @param {number} useMeterFrequencyVariation the allowed time variation in seconds above the meter frequency that a reading can deviate when using useMeterFrequency.
  * 	It effectively ignores differences in reading length for the number of seconds indicated. Default is 0.
+ * @param {string} lang Language code for translated header, defaults to English.
  * @returns {object[]} {array of readings accepted, true if all readings accepted and false otherwise, all messages from processing}
  */
 async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increasing, readingRepetition, isCumulative, cumulativeReset,
@@ -312,7 +313,7 @@ async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increa
 			meterReading2 = rows[index][0];
 			// Check the current reading is a number. The previous one should already be checked.
 			if (isNaN(meterReading2)) {
-				errMsg += translate('csv.upload.readings.error.parsing.reading.not.number', {
+				errMsg += translate('csv.upload.readings.error.parsing.reading.not.number.cumulative', {
 					meterName,
 					readingNum: row(index, isAscending, rows.length),
 					value: meterReading2
@@ -529,6 +530,8 @@ async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increa
 				} else {
 					errMsg += '<br>' + translate('csv.upload.readings.error.negative.reading.detected', { readingNum: negRow }, lang) + '<br>';
 				}
+				// Prepend meter identifier to make clear which meter generated the error.
+				errMsg = translate('csv.upload.readings.error.meter.prefix', { meterName }, lang) + errMsg;
 				log.error(errMsg);
 				errMsg += logStatus(meterName, negRow, prevReading, logReading, timeSort, readingRepetition, isCumulative, cumulativeReset,
 					resetStart, resetEnd, readingGap, readingLengthVariation, isEndTime, honorDst, relaxedParsing, useMeterZone,
@@ -750,16 +753,17 @@ async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increa
 		({ msgTotal, msgTotalWarning } = appendMsgTotal(msgTotal, newErrMsg, msgTotalWarning, lang));
 
 		if (!validReadings) {
+			// Build the shared prefix once and append the case-specific suffix.
+			errMsg = `<h2>${translate('csv.upload.readings.error.validation.prefix', { meterName }, lang)}`;
 			if (conditionSet['disableChecks'] === disableChecksType.REJECT_BAD) {
-				errMsg = `<h2>${translate('csv.upload.readings.error.validation.reject.bad', { meterName }, lang)}</h2>`;
+				errMsg += translate('csv.upload.readings.error.validation.reject.bad.suffix', {}, lang) + '</h2>';
 				// This removes invalid readings but keeps the valid ones.
 				result = result.filter(reading => validateSingleReading(reading, conditionSet));
 			} else if (conditionSet['disableChecks'] === disableChecksType.REJECT_NONE) {
-				// No translation key for this case; keep English
-				errMsg = `<h2>For meter ${meterName}: Error when validating data where all readings are accepted even though there were check errors</h2>`;
+				errMsg += translate('csv.upload.readings.error.validation.reject.none.suffix', {}, lang) + '</h2>';
 			} else {
 				// Make this the default to be careful in accepting readings.
-				errMsg = `<h2>${translate('csv.upload.readings.error.validation.reject.all', { meterName }, lang)}</h2>`;
+				errMsg += translate('csv.upload.readings.error.validation.reject.all.suffix', {}, lang) + '</h2>';
 				// Empties the result array
 				result.splice(0, result.length);
 			}

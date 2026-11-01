@@ -25,19 +25,21 @@ const LANGUAGES = Object.freeze({
 const { log } = require("../log");
 
 /**
- * Extract language from request headers
+ * Extract language from request headers.
  * Reads Accept-Language header and returns best match from supported languages.
  * Will default to English if header information missing or not an OED supported language.
  * @param {object} req - Express request object
  * @returns {string} Language code ('en', 'fr', or 'es')
  */
 function getLanguageFromRequest(req) {
+	// Default when the client sends no Accept-Language header.
 	let lang = LANGUAGES.en;
 	const acceptLanguage = req.headers["accept-language"];
 	if (!acceptLanguage) {
 		return lang;
 	}
 
+	// Entries are in preference order (e.g. "fr-FR,fr;q=0.9,en;q=0.8"); strip quality values.
 	const parsedLanguages = acceptLanguage.split(",").map((lang) => {
 		const parts = lang.split(";");
 		// Get just 'fr' from 'fr-FR'
@@ -45,27 +47,49 @@ function getLanguageFromRequest(req) {
 		return code;
 	});
 
+	// User has a language preference only if it maps to a code OED supports, default to English.
 	const code = parsedLanguages.find((code) => code in LANGUAGES);
 	return code ?? lang;
 }
 
 /**
- * Translate a key to the specified language
+ * Translate a message key to the specified language.
+ * 
+ * The function loads text from ServerTranslationData, replaces {placeholder} tokens
+ * using the values map, and falls back to English when the requested language is
+ * unsupported or the key is missing for that language.
+ * A warning is logged in those cases, and the key is returned only if English has
+ * no string for the key.
+ *
+ * Example usage:
+ *   const lang = getLanguageFromRequest(req);
+ *   translate('csv.upload.meters.success', {}, lang);
+ *   translate('csv.upload.meters.error.gps.invalid', { meterName, gps, error: message }, lang);
+ * 
  * @param {string} key - Translation key (e.g., 'csv.upload.error.no.file')
- * @param {string} lang - Language code (default: 'en')
- * @returns {string} Translated string or key if not found
+ * @param {object} - Values for {placeholder} segments in the translation string
+ * @param {string} - Language code ('en', 'fr', or 'es') with 'en' as default
+ *  * @returns {string} Translated string or key if not found in English either
  */
 function translate(key, values = {}, lang = LANGUAGES.en) {
+	let lookupLang = lang;
 	if (!(lang in ServerTranslationData)) {
 		log.warn(`Language ${lang} not supported.`);
+		// Default to English when language is not supported.
+		lookupLang = LANGUAGES.en;
+	}
+
+	let translation = ServerTranslationData[lookupLang][key];
+	if (!translation && lookupLang !== LANGUAGES.en) {
+		// Key not found in requested language; try English before giving up.
+		log.warn(`Translation key not found: ${key} for language: ${lang}`);
+		translation = ServerTranslationData[LANGUAGES.en][key];
+	}
+
+	if (!translation) {
 		return key;
 	}
 
-	const translation = ServerTranslationData[lang][key];
-	if (!translation) {
-		log.warn(`Translation key not found: ${key} for language: ${lang}`);
-		return key;
-	}
 
 	// Replace variable placeholders in the ServerTranslationData
 	return translation.replace(/\{(\w+)\}/g, (match, varName) => {
